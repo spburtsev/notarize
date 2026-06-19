@@ -2,19 +2,25 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log"
 	"log/slog"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/spburtsev/notarize/internal/config"
 	"github.com/spburtsev/notarize/internal/db"
 	"github.com/spburtsev/notarize/internal/handler"
 	"github.com/spburtsev/notarize/internal/oas"
+	"github.com/spburtsev/notarize/internal/storage"
 )
 
 func main() {
-	ctx := context.Background()
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
 
 	cfg, err := config.Load()
 	if err != nil {
@@ -38,17 +44,53 @@ func main() {
 		os.Exit(1)
 	}
 
+	store, err := storage.New(storage.Config{
+		Endpoint:  cfg.S3Endpoint,
+		AccessKey: cfg.S3AccessKey,
+		SecretKey: cfg.S3SecretKey,
+		Bucket:    cfg.S3Bucket,
+		UseSSL:    cfg.S3UseSSL,
+	})
+	if err != nil {
+		slog.Error("connect to object storage", "error", err)
+		os.Exit(1)
+	}
+	if err := store.EnsureBucket(ctx); err != nil {
+		slog.Error("ensure bucket", "error", err)
+		os.Exit(1)
+	}
+
 	service := &handler.ServerHandler{}
-	srv, err := oas.NewServer(service, nil)
+	oasHandler, err := oas.NewServer(service, nil)
 	if err != nil {
 		slog.Error("create server", "error", err)
 		os.Exit(1)
 	}
 
-	slog.Info("starting server", "addr", ":8080")
-	if err := http.ListenAndServe(":8080", srv); err != nil {
-		slog.Error("server stopped", "error", err)
-		os.Exit(1)
+	srv := &http.Server{Addr: ":8080", Handler: oasHandler}
+
+	serverErr := make(chan error, 1)
+	go func() {
+		slog.Info("starting server", "addr", srv.Addr)
+		serverErr <- srv.ListenAndServe()
+	}()
+
+	select {
+	case err := <-serverErr:
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			slog.Error("server failed", "error", err)
+			os.Exit(1)
+		}
+	case <-ctx.Done():
+		stop()
+		slog.Info("shutdown signal received, draining connections")
+
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := srv.Shutdown(shutdownCtx); err != nil {
+			slog.Error("graceful shutdown failed", "error", err)
+		}
+		slog.Info("server stopped")
 	}
 }
 
