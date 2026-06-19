@@ -60,7 +60,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	service := &handler.ServerHandler{}
+	service := handler.New(pool, store)
 	oasHandler, err := oas.NewServer(service, nil)
 	if err != nil {
 		slog.Error("create server", "error", err)

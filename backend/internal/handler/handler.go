@@ -4,10 +4,24 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/spburtsev/notarize/internal/db/sqlc"
 	"github.com/spburtsev/notarize/internal/oas"
+	"github.com/spburtsev/notarize/internal/storage"
 )
 
 type ServerHandler struct {
+	pool    *pgxpool.Pool
+	q       *sqlc.Queries
+	storage *storage.Storage
+}
+
+func New(pool *pgxpool.Pool, store *storage.Storage) *ServerHandler {
+	return &ServerHandler{
+		pool:    pool,
+		q:       sqlc.New(pool),
+		storage: store,
+	}
 }
 
 func (h *ServerHandler) CancelApprovalProcess(ctx context.Context, params oas.CancelApprovalProcessParams) (*oas.ApprovalProcess, error) {
