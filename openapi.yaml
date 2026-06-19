@@ -1,0 +1,759 @@
+openapi: 3.0.3
+info:
+  title: notarize Approval & Review API
+  version: 0.1.0
+  description: >
+    Spec-first contract for the `notarize` document notarization and multi-step
+    approval platform. Designed for openapi code generation. Each approval
+    decision is recorded with a detached digital signature over a canonical,
+    replay-resistant payload.
+servers:
+  - url: /api/v1
+
+security:
+  - bearerAuth: []
+
+paths:
+  /documents:
+    get:
+      operationId: listDocuments
+      summary: List documents
+      tags: [documents]
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+        - name: folderId
+          in: query
+          required: false
+          description: Filter to documents directly in this folder.
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/DocumentStatus"
+      responses:
+        "200":
+          description: A page of documents.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentPage"
+        default:
+          $ref: "#/components/responses/Error"
+    post:
+      operationId: createDocument
+      summary: Upload a new document
+      description: >
+        Uploads file content via multipart/form-data. The server stores the
+        bytes in object storage, computes the SHA-256 digest, and returns the
+        created document. That digest is the value later bound by approval
+        signatures.
+      tags: [documents]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Raw document bytes.
+                name:
+                  type: string
+                  description: Display name; defaults to the uploaded filename.
+                folder_id:
+                  type: string
+                  format: uuid
+                  description: Optional folder to upload into; omit for unfiled.
+      responses:
+        "201":
+          description: Document created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Document"
+        default:
+          $ref: "#/components/responses/Error"
+
+  /documents/{documentId}:
+    parameters:
+      - $ref: "#/components/parameters/DocumentId"
+    get:
+      operationId: getDocument
+      summary: Fetch document metadata
+      tags: [documents]
+      responses:
+        "200":
+          description: The document.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Document"
+        default:
+          $ref: "#/components/responses/Error"
+
+  /documents/{documentId}/content:
+    parameters:
+      - $ref: "#/components/parameters/DocumentId"
+    get:
+      operationId: downloadDocumentContent
+      summary: Download raw document bytes
+      tags: [documents]
+      responses:
+        "200":
+          description: Document bytes.
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        default:
+          $ref: "#/components/responses/Error"
+
+  /documents/{documentId}/move:
+    parameters:
+      - $ref: "#/components/parameters/DocumentId"
+    post:
+      operationId: moveDocument
+      summary: Move a document into a folder (or to root)
+      tags: [documents]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MoveDocumentRequest"
+      responses:
+        "200":
+          description: The updated document.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Document"
+        default:
+          $ref: "#/components/responses/Error"
+
+  /folders:
+    get:
+      operationId: listFolders
+      summary: List folders
+      tags: [folders]
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+        - name: parentId
+          in: query
+          required: false
+          description: Filter to direct children of this folder.
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: A page of folders.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FolderPage"
+        default:
+          $ref: "#/components/responses/Error"
+    post:
+      operationId: createFolder
+      summary: Create a folder
+      tags: [folders]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateFolderRequest"
+      responses:
+        "201":
+          description: Folder created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Folder"
+        default:
+          $ref: "#/components/responses/Error"
+
+  /folders/{folderId}:
+    parameters:
+      - $ref: "#/components/parameters/FolderId"
+    get:
+      operationId: getFolder
+      summary: Fetch a folder
+      tags: [folders]
+      responses:
+        "200":
+          description: The folder.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Folder"
+        default:
+          $ref: "#/components/responses/Error"
+    patch:
+      operationId: updateFolder
+      summary: Rename or move a folder
+      description: >
+        Partial update. Omit a field to leave it unchanged. `parent_id` is
+        tri-state: omit = unchanged, null = move to root, a value = reparent.
+        The server rejects updates that would create a cycle.
+      tags: [folders]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateFolderRequest"
+      responses:
+        "200":
+          description: The updated folder.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Folder"
+        default:
+          $ref: "#/components/responses/Error"
+    delete:
+      operationId: deleteFolder
+      summary: Delete a folder
+      description: >
+        Fails if the folder still contains documents or child folders; move or
+        delete those first.
+      tags: [folders]
+      responses:
+        "204":
+          description: Folder deleted.
+        default:
+          $ref: "#/components/responses/Error"
+
+  /approval-processes:
+    get:
+      operationId: listApprovalProcesses
+      summary: List approval processes
+      tags: [approvals]
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+        - name: documentId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/ProcessStatus"
+      responses:
+        "200":
+          description: A page of approval processes.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApprovalProcessPage"
+        default:
+          $ref: "#/components/responses/Error"
+    post:
+      operationId: createApprovalProcess
+      summary: Start an approval process for a document
+      description: >
+        Binds a document to an ordered list of approval steps, defined inline
+        (configurable per process). The first step becomes ACTIVE; the rest
+        are PENDING.
+      tags: [approvals]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateApprovalProcessRequest"
+      responses:
+        "201":
+          description: Process created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApprovalProcess"
+        default:
+          $ref: "#/components/responses/Error"
+
+  /approval-processes/{processId}:
+    parameters:
+      - $ref: "#/components/parameters/ProcessId"
+    get:
+      operationId: getApprovalProcess
+      summary: Fetch an approval process
+      tags: [approvals]
+      responses:
+        "200":
+          description: The process.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApprovalProcess"
+        default:
+          $ref: "#/components/responses/Error"
+
+  /approval-processes/{processId}/cancel:
+    parameters:
+      - $ref: "#/components/parameters/ProcessId"
+    post:
+      operationId: cancelApprovalProcess
+      summary: Cancel an in-flight process
+      tags: [approvals]
+      responses:
+        "200":
+          description: The cancelled process.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApprovalProcess"
+        default:
+          $ref: "#/components/responses/Error"
+
+  /approval-processes/{processId}/steps/{stepId}/decisions:
+    parameters:
+      - $ref: "#/components/parameters/ProcessId"
+      - $ref: "#/components/parameters/StepId"
+    post:
+      operationId: submitDecision
+      summary: Submit a signed approve/reject decision
+      description: >
+        Records an actor's decision on an ACTIVE step. The actor is taken from
+        the auth token, never from the body. The server reconstructs the
+        canonical approval payload, verifies the signature against the actor's
+        registered key and the document digest, then persists. When the step's
+        policy is satisfied the process advances; a REJECT terminates it.
+      tags: [approvals]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubmitDecisionRequest"
+      responses:
+        "201":
+          description: Decision recorded.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Decision"
+        default:
+          $ref: "#/components/responses/Error"
+
+  /approval-processes/{processId}/comments:
+    parameters:
+      - $ref: "#/components/parameters/ProcessId"
+    get:
+      operationId: listProcessComments
+      summary: List review comments on a process
+      tags: [reviews]
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+      responses:
+        "200":
+          description: A page of comments.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReviewCommentPage"
+        default:
+          $ref: "#/components/responses/Error"
+    post:
+      operationId: createProcessComment
+      summary: Add a review comment
+      description: >
+        Lightweight, non-binding commentary on a process or one of its steps,
+        distinct from a formal signed decision.
+      tags: [reviews]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateReviewCommentRequest"
+      responses:
+        "201":
+          description: Comment created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReviewComment"
+        default:
+          $ref: "#/components/responses/Error"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    Limit:
+      name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        format: int32
+        minimum: 1
+        maximum: 200
+        default: 50
+    Cursor:
+      name: cursor
+      in: query
+      required: false
+      schema:
+        type: string
+    DocumentId:
+      name: documentId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ProcessId:
+      name: processId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    StepId:
+      name: stepId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    FolderId:
+      name: folderId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    Error:
+      description: Error response.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+  schemas:
+    Error:
+      type: object
+      required: [error_code, message]
+      properties:
+        error_code:
+          type: string
+          description: Stable machine-readable code, e.g. `document_not_found`.
+        message:
+          type: string
+        request_id:
+          type: string
+          nullable: true
+
+    DocumentStatus:
+      type: string
+      enum: [UPLOADED, IN_REVIEW, APPROVED, REJECTED, ARCHIVED]
+    ProcessStatus:
+      type: string
+      enum: [PENDING, IN_PROGRESS, APPROVED, REJECTED, CANCELLED]
+    StepStatus:
+      type: string
+      enum: [PENDING, ACTIVE, APPROVED, REJECTED, SKIPPED]
+    StepPolicy:
+      type: string
+      description: >
+        ANY = one approval satisfies the step. ALL = every assignee must
+        approve. QUORUM = `required_approvals` approvals needed.
+      enum: [ANY, ALL, QUORUM]
+    DecisionType:
+      type: string
+      enum: [APPROVE, REJECT]
+    SignatureAlgorithm:
+      type: string
+      enum: [ED25519, ECDSA_P256_SHA256, RSA_PSS_SHA256]
+
+    Document:
+      type: object
+      required:
+        [
+          id,
+          name,
+          content_type,
+          size_bytes,
+          sha256,
+          folder_id,
+          status,
+          created_by,
+          created_at,
+          updated_at,
+        ]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        content_type: { type: string }
+        size_bytes: { type: integer, format: int64 }
+        sha256:
+          type: string
+          description: Lowercase hex SHA-256 digest of the stored bytes.
+        folder_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: Containing folder, or null if unfiled.
+        status: { $ref: "#/components/schemas/DocumentStatus" }
+        created_by: { type: string, format: uuid }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    DocumentPage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Document" }
+        next_cursor:
+          type: string
+          nullable: true
+
+    Folder:
+      type: object
+      required: [id, name, parent_id, created_by, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        parent_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: Parent folder, or null for a root folder.
+        created_by: { type: string, format: uuid }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    FolderPage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Folder" }
+        next_cursor:
+          type: string
+          nullable: true
+    CreateFolderRequest:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+        parent_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: Parent folder; omit or null to create at root.
+    UpdateFolderRequest:
+      type: object
+      description: Partial update; omit a field to leave it unchanged.
+      properties:
+        name: { type: string }
+        parent_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: Omit = unchanged, null = move to root, value = reparent.
+    MoveDocumentRequest:
+      type: object
+      required: [folder_id]
+      properties:
+        folder_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: Destination folder, or null to move to root (unfiled).
+
+    StepDefinition:
+      type: object
+      required: [name, policy, approver_user_ids]
+      properties:
+        name: { type: string }
+        policy: { $ref: "#/components/schemas/StepPolicy" }
+        required_approvals:
+          type: integer
+          format: int32
+          nullable: true
+          description: Required only when policy is QUORUM.
+        approver_user_ids:
+          type: array
+          items: { type: string, format: uuid }
+        approver_roles:
+          type: array
+          items: { type: string }
+    CreateApprovalProcessRequest:
+      type: object
+      required: [document_id, steps]
+      properties:
+        document_id: { type: string, format: uuid }
+        steps:
+          type: array
+          minItems: 1
+          items: { $ref: "#/components/schemas/StepDefinition" }
+
+    ApprovalProcess:
+      type: object
+      required:
+        [id, document_id, status, steps, created_by, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        document_id: { type: string, format: uuid }
+        status: { $ref: "#/components/schemas/ProcessStatus" }
+        current_step_index:
+          type: integer
+          format: int32
+          nullable: true
+          description: Index of the ACTIVE step, or null if finished/cancelled.
+        steps:
+          type: array
+          items: { $ref: "#/components/schemas/ProcessStep" }
+        created_by: { type: string, format: uuid }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    ProcessStep:
+      type: object
+      required: [id, index, name, policy, status, approver_user_ids, decisions]
+      properties:
+        id: { type: string, format: uuid }
+        index: { type: integer, format: int32 }
+        name: { type: string }
+        policy: { $ref: "#/components/schemas/StepPolicy" }
+        required_approvals:
+          type: integer
+          format: int32
+          nullable: true
+        status: { $ref: "#/components/schemas/StepStatus" }
+        approver_user_ids:
+          type: array
+          items: { type: string, format: uuid }
+        approver_roles:
+          type: array
+          items: { type: string }
+        decisions:
+          type: array
+          items: { $ref: "#/components/schemas/Decision" }
+    ApprovalProcessPage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/ApprovalProcess" }
+        next_cursor:
+          type: string
+          nullable: true
+
+    SignatureInput:
+      type: object
+      required: [algorithm, value, key_id]
+      description: >
+        Detached signature produced by the approver. The signed message is the
+        canonical approval payload constructed server-side as UTF-8 of:
+        `notarize-approval-v1\n{document_sha256}\n{process_id}\n{step_id}\n{decision_type}\n{actor_id}`.
+        Binding all five fields prevents replaying a signature across documents,
+        processes, steps, decision types, or actors.
+      properties:
+        algorithm: { $ref: "#/components/schemas/SignatureAlgorithm" }
+        value:
+          type: string
+          description: Base64-encoded detached signature bytes.
+        key_id:
+          type: string
+          description: Identifier of the approver's registered public key.
+        certificate:
+          type: string
+          nullable: true
+          description: Optional base64 (DER) signing certificate.
+    Signature:
+      type: object
+      required: [algorithm, value, key_id, signed_payload_sha256, signed_at]
+      properties:
+        algorithm: { $ref: "#/components/schemas/SignatureAlgorithm" }
+        value: { type: string }
+        key_id: { type: string }
+        certificate:
+          type: string
+          nullable: true
+        signed_payload_sha256:
+          type: string
+          description: Hex SHA-256 of the canonical payload the server verified.
+        signed_at: { type: string, format: date-time }
+
+    SubmitDecisionRequest:
+      type: object
+      required: [type, signature]
+      properties:
+        type: { $ref: "#/components/schemas/DecisionType" }
+        comment:
+          type: string
+          nullable: true
+        signature: { $ref: "#/components/schemas/SignatureInput" }
+    Decision:
+      type: object
+      required: [id, step_id, actor_id, type, signature, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        step_id: { type: string, format: uuid }
+        actor_id: { type: string, format: uuid }
+        type: { $ref: "#/components/schemas/DecisionType" }
+        comment:
+          type: string
+          nullable: true
+        signature: { $ref: "#/components/schemas/Signature" }
+        created_at: { type: string, format: date-time }
+
+    CreateReviewCommentRequest:
+      type: object
+      required: [body]
+      properties:
+        body: { type: string }
+        step_id:
+          type: string
+          format: uuid
+          nullable: true
+    ReviewComment:
+      type: object
+      required: [id, process_id, author_id, body, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        process_id: { type: string, format: uuid }
+        step_id:
+          type: string
+          format: uuid
+          nullable: true
+        author_id: { type: string, format: uuid }
+        body: { type: string }
+        created_at: { type: string, format: date-time }
+    ReviewCommentPage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/ReviewComment" }
+        next_cursor:
+          type: string
+          nullable: true
