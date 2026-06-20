@@ -22,10 +22,10 @@ paths:
       parameters:
         - $ref: "#/components/parameters/Limit"
         - $ref: "#/components/parameters/Cursor"
-        - name: folderId
+        - name: issueId
           in: query
           required: false
-          description: Filter to documents directly in this folder.
+          description: Filter to documents in this issue.
           schema:
             type: string
             format: uuid
@@ -58,7 +58,7 @@ paths:
           multipart/form-data:
             schema:
               type: object
-              required: [file]
+              required: [file, issue_id]
               properties:
                 file:
                   type: string
@@ -67,10 +67,10 @@ paths:
                 name:
                   type: string
                   description: Display name; defaults to the uploaded filename.
-                folder_id:
+                issue_id:
                   type: string
                   format: uuid
-                  description: Optional folder to upload into; omit for unfiled.
+                  description: Issue the document is uploaded into.
       responses:
         "201":
           description: Document created.
@@ -121,7 +121,7 @@ paths:
       - $ref: "#/components/parameters/DocumentId"
     post:
       operationId: moveDocument
-      summary: Move a document into a folder (or to root)
+      summary: Move a document to a different issue
       tags: [documents]
       requestBody:
         required: true
@@ -139,99 +139,277 @@ paths:
         default:
           $ref: "#/components/responses/Error"
 
-  /folders:
+  /projects:
     get:
-      operationId: listFolders
-      summary: List folders
-      tags: [folders]
+      operationId: listProjects
+      summary: List projects
+      tags: [projects]
       parameters:
         - $ref: "#/components/parameters/Limit"
         - $ref: "#/components/parameters/Cursor"
-        - name: parentId
-          in: query
-          required: false
-          description: Filter to direct children of this folder.
-          schema:
-            type: string
-            format: uuid
       responses:
         "200":
-          description: A page of folders.
+          description: A page of projects.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/FolderPage"
+                $ref: "#/components/schemas/ProjectPage"
         default:
           $ref: "#/components/responses/Error"
     post:
-      operationId: createFolder
-      summary: Create a folder
-      tags: [folders]
+      operationId: createProject
+      summary: Create a project
+      tags: [projects]
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CreateFolderRequest"
+              $ref: "#/components/schemas/CreateProjectRequest"
       responses:
         "201":
-          description: Folder created.
+          description: Project created.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Folder"
+                $ref: "#/components/schemas/Project"
         default:
           $ref: "#/components/responses/Error"
 
-  /folders/{folderId}:
+  /projects/{projectId}:
     parameters:
-      - $ref: "#/components/parameters/FolderId"
+      - $ref: "#/components/parameters/ProjectId"
     get:
-      operationId: getFolder
-      summary: Fetch a folder
-      tags: [folders]
+      operationId: getProject
+      summary: Fetch a project
+      tags: [projects]
       responses:
         "200":
-          description: The folder.
+          description: The project.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Folder"
+                $ref: "#/components/schemas/Project"
         default:
           $ref: "#/components/responses/Error"
     patch:
-      operationId: updateFolder
-      summary: Rename or move a folder
-      description: >
-        Partial update. Omit a field to leave it unchanged. `parent_id` is
-        tri-state: omit = unchanged, null = move to root, a value = reparent.
-        The server rejects updates that would create a cycle.
-      tags: [folders]
+      operationId: updateProject
+      summary: Rename a project
+      description: Partial update. Omit a field to leave it unchanged.
+      tags: [projects]
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/UpdateFolderRequest"
+              $ref: "#/components/schemas/UpdateProjectRequest"
       responses:
         "200":
-          description: The updated folder.
+          description: The updated project.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Folder"
+                $ref: "#/components/schemas/Project"
         default:
           $ref: "#/components/responses/Error"
     delete:
-      operationId: deleteFolder
-      summary: Delete a folder
+      operationId: deleteProject
+      summary: Delete a project
       description: >
-        Fails if the folder still contains documents or child folders; move or
-        delete those first.
-      tags: [folders]
+        Cascades: deletes the project's issues, their documents, and any
+        approval processes bound to those documents.
+      tags: [projects]
       responses:
         "204":
-          description: Folder deleted.
+          description: Project deleted.
+        default:
+          $ref: "#/components/responses/Error"
+
+  /issues:
+    get:
+      operationId: listIssues
+      summary: List issues
+      tags: [issues]
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+        - name: projectId
+          in: query
+          required: false
+          description: Filter to issues in this project.
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/IssueStatus"
+      responses:
+        "200":
+          description: A page of issues.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IssuePage"
+        default:
+          $ref: "#/components/responses/Error"
+    post:
+      operationId: createIssue
+      summary: Create an issue
+      tags: [issues]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateIssueRequest"
+      responses:
+        "201":
+          description: Issue created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Issue"
+        default:
+          $ref: "#/components/responses/Error"
+
+  /issues/{issueId}:
+    parameters:
+      - $ref: "#/components/parameters/IssueId"
+    get:
+      operationId: getIssue
+      summary: Fetch an issue
+      tags: [issues]
+      responses:
+        "200":
+          description: The issue.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Issue"
+        default:
+          $ref: "#/components/responses/Error"
+    patch:
+      operationId: updateIssue
+      summary: Update an issue
+      description: >
+        Partial update. Omit a field to leave it unchanged. Setting `project_id`
+        moves the issue to another project.
+      tags: [issues]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateIssueRequest"
+      responses:
+        "200":
+          description: The updated issue.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Issue"
+        default:
+          $ref: "#/components/responses/Error"
+    delete:
+      operationId: deleteIssue
+      summary: Delete an issue
+      description: >
+        Cascades: deletes the issue's documents and any approval processes
+        bound to those documents.
+      tags: [issues]
+      responses:
+        "204":
+          description: Issue deleted.
+        default:
+          $ref: "#/components/responses/Error"
+
+  /users:
+    get:
+      operationId: listUsers
+      summary: List users
+      tags: [users]
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Cursor"
+        - name: role
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/UserRole"
+      responses:
+        "200":
+          description: A page of users.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserPage"
+        default:
+          $ref: "#/components/responses/Error"
+    post:
+      operationId: createUser
+      summary: Create a user
+      tags: [users]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUserRequest"
+      responses:
+        "201":
+          description: User created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        default:
+          $ref: "#/components/responses/Error"
+
+  /users/{userId}:
+    parameters:
+      - $ref: "#/components/parameters/UserId"
+    get:
+      operationId: getUser
+      summary: Fetch a user
+      tags: [users]
+      responses:
+        "200":
+          description: The user.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        default:
+          $ref: "#/components/responses/Error"
+    patch:
+      operationId: updateUser
+      summary: Update a user
+      description: Partial update. Omit a field to leave it unchanged.
+      tags: [users]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserRequest"
+      responses:
+        "200":
+          description: The updated user.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        default:
+          $ref: "#/components/responses/Error"
+    delete:
+      operationId: deleteUser
+      summary: Delete a user
+      tags: [users]
+      responses:
+        "204":
+          description: User deleted.
         default:
           $ref: "#/components/responses/Error"
 
@@ -438,8 +616,22 @@ components:
       schema:
         type: string
         format: uuid
-    FolderId:
-      name: folderId
+    ProjectId:
+      name: projectId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    IssueId:
+      name: issueId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    UserId:
+      name: userId
       in: path
       required: true
       schema:
@@ -471,6 +663,12 @@ components:
     DocumentStatus:
       type: string
       enum: [UPLOADED, IN_REVIEW, APPROVED, REJECTED, ARCHIVED]
+    IssueStatus:
+      type: string
+      enum: [OPEN, IN_PROGRESS, CLOSED]
+    UserRole:
+      type: string
+      enum: [ADMIN, MANAGER, EMPLOYEE, INVITEE]
     ProcessStatus:
       type: string
       enum: [PENDING, IN_PROGRESS, APPROVED, REJECTED, CANCELLED]
@@ -499,7 +697,7 @@ components:
           content_type,
           size_bytes,
           sha256,
-          folder_id,
+          issue_id,
           status,
           created_by,
           created_at,
@@ -513,11 +711,10 @@ components:
         sha256:
           type: string
           description: Lowercase hex SHA-256 digest of the stored bytes.
-        folder_id:
+        issue_id:
           type: string
           format: uuid
-          nullable: true
-          description: Containing folder, or null if unfiled.
+          description: Issue this document belongs to.
         status: { $ref: "#/components/schemas/DocumentStatus" }
         created_by: { type: string, format: uuid }
         created_at: { type: string, format: date-time }
@@ -533,59 +730,136 @@ components:
           type: string
           nullable: true
 
-    Folder:
+    Project:
       type: object
-      required: [id, name, parent_id, created_by, created_at, updated_at]
+      required: [id, name, created_by, created_at, updated_at]
       properties:
         id: { type: string, format: uuid }
         name: { type: string }
-        parent_id:
-          type: string
-          format: uuid
-          nullable: true
-          description: Parent folder, or null for a root folder.
         created_by: { type: string, format: uuid }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
-    FolderPage:
+    ProjectPage:
       type: object
       required: [items]
       properties:
         items:
           type: array
-          items: { $ref: "#/components/schemas/Folder" }
+          items: { $ref: "#/components/schemas/Project" }
         next_cursor:
           type: string
           nullable: true
-    CreateFolderRequest:
+    CreateProjectRequest:
       type: object
       required: [name]
       properties:
         name: { type: string }
-        parent_id:
-          type: string
-          format: uuid
-          nullable: true
-          description: Parent folder; omit or null to create at root.
-    UpdateFolderRequest:
+    UpdateProjectRequest:
       type: object
       description: Partial update; omit a field to leave it unchanged.
       properties:
         name: { type: string }
-        parent_id:
+
+    Issue:
+      type: object
+      required:
+        [id, project_id, title, status, created_by, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        project_id: { type: string, format: uuid }
+        title: { type: string }
+        description:
+          type: string
+          nullable: true
+        status: { $ref: "#/components/schemas/IssueStatus" }
+        created_by: { type: string, format: uuid }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    IssuePage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Issue" }
+        next_cursor:
+          type: string
+          nullable: true
+    CreateIssueRequest:
+      type: object
+      required: [project_id, title]
+      properties:
+        project_id: { type: string, format: uuid }
+        title: { type: string }
+        description:
+          type: string
+          nullable: true
+    UpdateIssueRequest:
+      type: object
+      description: Partial update; omit a field to leave it unchanged.
+      properties:
+        title: { type: string }
+        description:
+          type: string
+          nullable: true
+        status: { $ref: "#/components/schemas/IssueStatus" }
+        project_id:
           type: string
           format: uuid
-          nullable: true
-          description: Omit = unchanged, null = move to root, value = reparent.
+          description: Move the issue to another project.
     MoveDocumentRequest:
       type: object
-      required: [folder_id]
+      required: [issue_id]
       properties:
-        folder_id:
+        issue_id:
           type: string
           format: uuid
+          description: Destination issue.
+
+    User:
+      type: object
+      required:
+        [id, email, first_name, last_name, role, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string, format: email }
+        first_name: { type: string }
+        last_name: { type: string }
+        role: { $ref: "#/components/schemas/UserRole" }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    UserPage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/User" }
+        next_cursor:
+          type: string
           nullable: true
-          description: Destination folder, or null to move to root (unfiled).
+    CreateUserRequest:
+      type: object
+      required: [email, first_name, last_name, password]
+      properties:
+        email: { type: string, format: email }
+        first_name: { type: string }
+        last_name: { type: string }
+        password:
+          type: string
+          format: password
+          description: Plaintext password; the server stores only a hash.
+        role:
+          allOf:
+            - $ref: "#/components/schemas/UserRole"
+          description: Defaults to EMPLOYEE when omitted.
+    UpdateUserRequest:
+      type: object
+      description: Partial update; omit a field to leave it unchanged.
+      properties:
+        first_name: { type: string }
+        last_name: { type: string }
+        role: { $ref: "#/components/schemas/UserRole" }
 
     StepDefinition:
       type: object

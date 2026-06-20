@@ -13,6 +13,7 @@ import (
 
 	"github.com/spburtsev/notarize/internal/config"
 	"github.com/spburtsev/notarize/internal/db"
+	"github.com/spburtsev/notarize/internal/db/models"
 	"github.com/spburtsev/notarize/internal/handler"
 	"github.com/spburtsev/notarize/internal/oas"
 	"github.com/spburtsev/notarize/internal/storage"
@@ -32,14 +33,16 @@ func main() {
 	}))
 	slog.SetDefault(logger)
 
-	pool, err := db.NewPool(ctx, cfg.DatabaseURL)
+	gdb, err := db.Open(ctx, cfg.DatabaseURL)
 	if err != nil {
 		slog.Error("connect to database", "error", err)
 		os.Exit(1)
 	}
-	defer pool.Close()
+	if sqlDB, err := gdb.DB(); err == nil {
+		defer sqlDB.Close()
+	}
 
-	if err := db.Migrate(pool); err != nil {
+	if err := gdb.AutoMigrate(models.All...); err != nil {
 		slog.Error("run migrations", "error", err)
 		os.Exit(1)
 	}
@@ -60,7 +63,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	service := handler.New(pool, store)
+	service := &handler.ServerHandler{}
 	oasHandler, err := oas.NewServer(service, nil)
 	if err != nil {
 		slog.Error("create server", "error", err)
