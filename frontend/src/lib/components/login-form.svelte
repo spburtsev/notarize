@@ -10,9 +10,16 @@
 	} from "$lib/components/ui/field/index.js";
 	import { Input } from "$lib/components/ui/input/index.js";
 	import { cn } from "$lib/utils.js";
+	import { enhance } from "$app/forms";
 	import type { HTMLAttributes } from "svelte/elements";
 
-	let { class: className, ...restProps }: HTMLAttributes<HTMLDivElement> = $props();
+	type LoginFormResult = { email?: string; error?: string };
+
+	let {
+		class: className,
+		form = null,
+		...restProps
+	}: HTMLAttributes<HTMLDivElement> & { form?: LoginFormResult | null } = $props();
 
 	const id = $props.id();
 </script>
@@ -24,7 +31,7 @@
 			<Card.Description>Login with your Apple or Google account</Card.Description>
 		</Card.Header>
 		<Card.Content>
-			<form>
+			<form method="POST" use:enhance>
 				<FieldGroup>
 					<Field>
 						<Button variant="outline" type="button">
@@ -51,7 +58,14 @@
 					</FieldSeparator>
 					<Field>
 						<FieldLabel for="email-{id}">Email</FieldLabel>
-						<Input id="email-{id}" type="email" placeholder="m@example.com" required />
+						<Input
+							id="email-{id}"
+							name="email"
+							type="email"
+							placeholder="m@example.com"
+							value={form?.email ?? ""}
+							required
+						/>
 					</Field>
 					<Field>
 						<div class="flex items-center">
@@ -60,8 +74,11 @@
 								Forgot your password?
 							</a>
 						</div>
-						<Input id="password-{id}" type="password" required />
+						<Input id="password-{id}" name="password" type="password" required />
 					</Field>
+					{#if form?.error}
+						<p class="text-destructive text-center text-sm">{form.error}</p>
+					{/if}
 					<Field>
 						<Button type="submit">Login</Button>
 						<FieldDescription class="text-center">

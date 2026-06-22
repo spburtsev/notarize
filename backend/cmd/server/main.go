@@ -11,6 +11,9 @@ import (
 	"syscall"
 	"time"
 
+	"gorm.io/gorm"
+
+	"github.com/spburtsev/notarize/internal/auth"
 	"github.com/spburtsev/notarize/internal/config"
 	"github.com/spburtsev/notarize/internal/db"
 	"github.com/spburtsev/notarize/internal/db/models"
@@ -47,6 +50,11 @@ func main() {
 		os.Exit(1)
 	}
 
+	if err := seedAdmin(ctx, gdb, cfg); err != nil {
+		slog.Error("seed admin", "error", err)
+		os.Exit(1)
+	}
+
 	store, err := storage.New(storage.Config{
 		Endpoint:  cfg.S3Endpoint,
 		AccessKey: cfg.S3AccessKey,
@@ -63,8 +71,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	service := &handler.ServerHandler{}
-	oasHandler, err := oas.NewServer(service, nil)
+	authSvc := auth.NewService(cfg.JWTSecret, cfg.JWTTTL)
+	service := handler.New(gdb, store, authSvc)
+	oasHandler, err := oas.NewServer(service, authSvc, oas.WithPathPrefix("/api/v1"))
 	if err != nil {
 		slog.Error("create server", "error", err)
 		os.Exit(1)
@@ -95,6 +104,38 @@ func main() {
 		}
 		slog.Info("server stopped")
 	}
+}
+
+func seedAdmin(ctx context.Context, gdb *gorm.DB, cfg config.Config) error {
+	if cfg.SeedAdminEmail == "" || cfg.SeedAdminPassword == "" {
+		return nil
+	}
+
+	var count int64
+	if err := gdb.WithContext(ctx).Model(&models.User{}).
+		Where("email = ?", cfg.SeedAdminEmail).Count(&count).Error; err != nil {
+		return err
+	}
+	if count > 0 {
+		return nil
+	}
+
+	hash, err := auth.Hash(cfg.SeedAdminPassword)
+	if err != nil {
+		return err
+	}
+	admin := models.User{
+		Email:        cfg.SeedAdminEmail,
+		FirstName:    "Admin",
+		LastName:     "User",
+		PasswordHash: hash,
+		Role:         models.UserRoleAdmin,
+	}
+	if err := gdb.WithContext(ctx).Create(&admin).Error; err != nil {
+		return err
+	}
+	slog.Info("seeded admin user", "email", cfg.SeedAdminEmail)
+	return nil
 }
 
 func parseLogLevel(s string) slog.Level {

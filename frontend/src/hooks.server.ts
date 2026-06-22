@@ -1,5 +1,5 @@
 import { sequence } from '@sveltejs/kit/hooks';
-import { error, type Handle } from '@sveltejs/kit';
+import { error, redirect, type Handle } from '@sveltejs/kit';
 import { BACKEND_URL } from '$app/env/private';
 
 const PROXY_PATH = "/api-proxy";
@@ -25,15 +25,21 @@ const handleApiProxy: Handle = async ({ event, resolve }) => {
   const urlPath = `${backendURL}${strippedPath}${event.url.search}`;
   const proxiedUrl = new URL(urlPath);
 
+  const headers = new Headers(event.request.headers);
+  const session = event.cookies.get("session");
+  if (session) {
+    headers.set("Authorization", `Bearer ${session}`);
+  }
+
   // Strip off header added by SvelteKit yet forbidden by underlying HTTP request
   // library `undici`.
   // https://github.com/nodejs/undici/issues/1470
-  //   event.request.headers.delete("connection");
+  //   headers.delete("connection");
 
   return fetch(proxiedUrl.toString(), {
     body: event.request.body,
     method: event.request.method,
-    headers: event.request.headers,
+    headers,
   }).catch((err) => {
     console.log("Could not proxy API request: ", err);
     throw err;
@@ -41,11 +47,10 @@ const handleApiProxy: Handle = async ({ event, resolve }) => {
 };
 
 const handleAuth: Handle = async ({ event, resolve }) => {
-  if (!event.route.id?.startsWith("(protected)")) {
-    return resolve(event);
+  if (event.route.id?.startsWith("/(protected)") && !event.cookies.get("session")) {
+    redirect(303, "/login");
   }
 
-  // TODO: Implement auth logic
   return resolve(event);
 };
 

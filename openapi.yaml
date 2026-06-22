@@ -14,6 +14,31 @@ security:
   - bearerAuth: []
 
 paths:
+  /auth/login:
+    post:
+      operationId: login
+      summary: Exchange credentials for a bearer token
+      description: >
+        Public endpoint. Verifies email + password and returns a signed JWT to be
+        sent as `Authorization: Bearer <token>` on subsequent requests.
+      tags: [auth]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Authentication succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        default:
+          $ref: "#/components/responses/Error"
+
   /documents:
     get:
       operationId: listDocuments
@@ -330,6 +355,8 @@ paths:
       operationId: listUsers
       summary: List users
       tags: [users]
+      security:
+        - bearerAuth: [ADMIN]
       parameters:
         - $ref: "#/components/parameters/Limit"
         - $ref: "#/components/parameters/Cursor"
@@ -351,6 +378,8 @@ paths:
       operationId: createUser
       summary: Create a user
       tags: [users]
+      security:
+        - bearerAuth: [ADMIN]
       requestBody:
         required: true
         content:
@@ -388,6 +417,8 @@ paths:
       summary: Update a user
       description: Partial update. Omit a field to leave it unchanged.
       tags: [users]
+      security:
+        - bearerAuth: [ADMIN]
       requestBody:
         required: true
         content:
@@ -407,6 +438,8 @@ paths:
       operationId: deleteUser
       summary: Delete a user
       tags: [users]
+      security:
+        - bearerAuth: [ADMIN]
       responses:
         "204":
           description: User deleted.
@@ -506,6 +539,8 @@ paths:
     post:
       operationId: submitDecision
       summary: Submit a signed approve/reject decision
+      security:
+        - bearerAuth: [ADMIN, MANAGER]
       description: >
         Records an actor's decision on an ACTIVE step. The actor is taken from
         the auth token, never from the body. The server reconstructs the
@@ -815,6 +850,21 @@ components:
           type: string
           format: uuid
           description: Destination issue.
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, format: password }
+    LoginResponse:
+      type: object
+      required: [token, user]
+      properties:
+        token:
+          type: string
+          description: Signed JWT bearer token.
+        user: { $ref: "#/components/schemas/User" }
 
     User:
       type: object
