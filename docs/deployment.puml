@@ -1,0 +1,45 @@
+@startuml notarize-deployment
+title Notarize Deployment
+
+skinparam componentStyle uml2
+skinparam rectangle {
+  roundCorner 12
+}
+
+rectangle "User Land" {
+  actor User
+  node "Browser" as browser
+  User -right-> browser
+}
+
+rectangle "Platform Infrastructure" {
+
+  node "frontend" as frontend {
+    component "node" as fe
+    portin ":3000" as fePort
+  }
+
+  node "backend" as backend {
+    component "server" as be
+    portin ":8080" as bePort
+  }
+
+  node "postgres\n(postgres:18)" as postgres {
+    database "PostgreSQL" as pg
+    portin ":5432" as pgPort
+  }
+
+  node "minio\n(object storage)" as minio {
+    component "MinIO (S3)" as mio
+    portin ":9000" as mioPort
+  }
+
+
+  fe --> bePort : "proxy /api-proxy"
+  be --> pgPort : "SQL"
+  be --> mioPort : "S3 API"
+}
+
+browser --> fePort : "HTTP/S\n(pages + /api-proxy)"
+
+@enduml
