@@ -1,10 +1,3 @@
-<script lang="ts">
-	import data from "../data.js";
-	import SectionCards from "$lib/components/section-cards.svelte";
-	import DataTable from "$lib/components/data-table.svelte";
-</script>
-
-<div class="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-    <SectionCards />
-    <DataTable {data} />
+<div class="flex flex-1 items-center justify-center p-6">
+	<p class="text-muted-foreground text-sm">Dashboard</p>
 </div>
