@@ -7,5 +7,7 @@
 - node
 - pnpm
 
-# Build
+## Build
+```sh
 docker compose up -d --build
+```
