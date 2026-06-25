@@ -11,3 +11,5 @@ docker compose up -d --build
 - make
 - node
 - pnpm
+- python 3.14
+- uv
