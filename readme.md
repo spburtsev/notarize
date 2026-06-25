@@ -6,7 +6,7 @@
 docker compose up -d --build
 ```
 
-# Dev dependecies
+# Dev dependencies
 - go v1.26
 - make
 - node
