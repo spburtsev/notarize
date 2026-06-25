@@ -5,6 +5,7 @@ var All = []any{
 	&Project{},
 	&Issue{},
 	&Document{},
+	&DocumentProcessingJob{},
 	&ApprovalProcess{},
 	&ProcessStep{},
 	&Decision{},

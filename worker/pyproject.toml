@@ -1,0 +1,20 @@
+[project]
+name = "notarize-worker"
+version = "0.1.0"
+description = "Docling extraction worker draining the document_processing_jobs queue"
+requires-python = ">=3.14,<3.15"
+dependencies = [
+    "docling>=2.0,<3.0",
+    "psycopg[binary]>=3.1,<4.0",
+    "minio>=7.2,<8.0",
+]
+
+[dependency-groups]
+dev = ["ruff>=0.15,<0.16"]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+target-version = "py314"
+line-length = 100

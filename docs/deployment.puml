@@ -34,10 +34,16 @@ rectangle "Platform Infrastructure" {
     portin ":9000" as mioPort
   }
 
+  node "parsing worker" as worker {
+    component "worker.py" as wk
+  }
+
 
   fe --> bePort : "proxy /api-proxy"
   be --> pgPort : "SQL"
   be --> mioPort : "S3 API"
+  wk --> pgPort : "claim jobs"
+  wk --> mioPort : "read documents, write structured data"
 }
 
 browser --> fePort : "HTTP/S\n(pages + /api-proxy)"

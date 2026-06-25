@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
 	"time"
 
@@ -32,6 +33,14 @@ func New(cfg Config) (*Storage, error) {
 		return nil, fmt.Errorf("create object storage client: %w", err)
 	}
 	return &Storage{client: client, bucket: cfg.Bucket}, nil
+}
+
+func (s *Storage) Put(ctx context.Context, key string, r io.Reader, size int64, contentType string) error {
+	_, err := s.client.PutObject(ctx, s.bucket, key, r, size, minio.PutObjectOptions{ContentType: contentType})
+	if err != nil {
+		return fmt.Errorf("put object %q: %w", key, err)
+	}
+	return nil
 }
 
 func (s *Storage) EnsureBucket(ctx context.Context) error {

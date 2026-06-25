@@ -1,4 +1,4 @@
-.PHONY: generate gen-api gen-client
+.PHONY: generate gen-api gen-client lint-worker
 
 generate: gen-api gen-client
 
@@ -7,3 +7,6 @@ gen-api:
 
 gen-client:
 	cd frontend && pnpm gen:api
+
+lint-worker:
+	cd worker && uv run --only-group dev ruff format . && uv run --only-group dev ruff check --fix .
