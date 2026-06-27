@@ -43,6 +43,14 @@ func (s *Storage) Put(ctx context.Context, key string, r io.Reader, size int64, 
 	return nil
 }
 
+func (s *Storage) Get(ctx context.Context, key string) (io.ReadCloser, error) {
+	obj, err := s.client.GetObject(ctx, s.bucket, key, minio.GetObjectOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("get object %q: %w", key, err)
+	}
+	return obj, nil
+}
+
 func (s *Storage) EnsureBucket(ctx context.Context) error {
 	const maxAttempts = 10
 	const retryDelay = time.Second

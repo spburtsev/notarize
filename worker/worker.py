@@ -127,9 +127,18 @@ def worker_loop(stop_event: Event):
                         stop_event.wait(POLL_INTERVAL)
                         continue
                     if converter is None:
-                        from docling.document_converter import DocumentConverter
+                        from docling.datamodel.base_models import InputFormat
+                        from docling.datamodel.pipeline_options import PdfPipelineOptions
+                        from docling.document_converter import (
+                            DocumentConverter,
+                            PdfFormatOption,
+                        )
 
-                        converter = DocumentConverter()
+                        pdf_opts = PdfPipelineOptions()
+                        pdf_opts.do_ocr = False
+                        converter = DocumentConverter(
+                            format_options={InputFormat.PDF: PdfFormatOption(pipeline_options=pdf_opts)}
+                        )
                     process(conn, s3, converter, job)
         except Exception as e:
             print(f"[{name}] loop error, retrying in {POLL_INTERVAL}s: {e}", flush=True)

@@ -5,8 +5,11 @@ description = "Docling extraction worker draining the document_processing_jobs q
 requires-python = ">=3.14,<3.15"
 dependencies = [
     "docling>=2.0,<3.0",
+    "opencv-python-headless>=4.0,<5.0",
     "psycopg[binary]>=3.1,<4.0",
     "minio>=7.2,<8.0",
+    "torch>=2.2.2,<3.0",
+    "torchvision>=0,<1",
 ]
 
 [dependency-groups]
@@ -14,6 +17,16 @@ dev = ["ruff>=0.15,<0.16"]
 
 [tool.uv]
 package = false
+override-dependencies = ["opencv-python; sys_platform == 'darwin'"]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu" }]
+torchvision = [{ index = "pytorch-cpu" }]
 
 [tool.ruff]
 target-version = "py314"

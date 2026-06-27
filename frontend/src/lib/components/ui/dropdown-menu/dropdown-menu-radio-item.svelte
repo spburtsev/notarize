@@ -1,8 +1,7 @@
 <script lang="ts">
-	import { DropdownMenu as DropdownMenuPrimitive } from "bits-ui";
-	import { HugeiconsIcon } from "@hugeicons/svelte"
-	import { Tick02Icon } from '@hugeicons/core-free-icons';
-	import { cn, type WithoutChild } from "$lib/utils.js";
+	import { DropdownMenu as DropdownMenuPrimitive } from 'bits-ui';
+	import { Check } from '@lucide/svelte';
+	import { cn, type WithoutChild } from '$lib/utils.js';
 
 	let {
 		ref = $bindable(null),
@@ -27,7 +26,7 @@
 			data-slot="dropdown-menu-radio-item-indicator"
 		>
 			{#if checked}
-				<HugeiconsIcon icon={Tick02Icon} strokeWidth={2}  />
+				<Check />
 			{/if}
 		</span>
 		{@render childrenProp?.({ checked })}

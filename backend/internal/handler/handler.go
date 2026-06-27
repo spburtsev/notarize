@@ -25,8 +25,40 @@ func New(db *gorm.DB, store *storage.Storage, authSvc *auth.Service) *ServerHand
 	return &ServerHandler{db: db, storage: store, auth: authSvc}
 }
 
+var ErrNotFound = errors.New("not found")
+
+var ErrNotPDF = errors.New("not a pdf")
+
+func notFound(err error) error {
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return ErrNotFound
+	}
+	return err
+}
+
+func listLimit(opt oas.OptInt32) int {
+	if v, ok := opt.Get(); ok && v > 0 {
+		if v > 200 {
+			return 200
+		}
+		return int(v)
+	}
+	return 50
+}
+
+func listOffset(opt oas.OptInt32) int {
+	if v, ok := opt.Get(); ok && v > 0 {
+		return int(v)
+	}
+	return 0
+}
+
 func (h *ServerHandler) NewError(ctx context.Context, err error) *oas.ErrorStatusCode {
 	switch {
+	case errors.Is(err, ErrNotPDF):
+		return errResponse(http.StatusBadRequest, "invalid_document", "only PDF documents are accepted")
+	case errors.Is(err, ErrNotFound):
+		return errResponse(http.StatusNotFound, "not_found", "the requested resource was not found")
 	case errors.Is(err, auth.ErrForbidden):
 		return errResponse(http.StatusForbidden, "forbidden", "you do not have permission to perform this action")
 	case errors.Is(err, auth.ErrUnauthorized):

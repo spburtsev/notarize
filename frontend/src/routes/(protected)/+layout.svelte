@@ -6,18 +6,9 @@
 
 	const { children } = $props();
 	const breadcrumbs = $derived.by(() => {
-		switch (page.url.pathname) {
-			case '/dashboard':
-				return [{ label: 'Dashboard', url: '/dashboard' }];
-			case '/analytics':
-				return [{ label: 'Analytics', url: '/analytics' }];
-			case '/projects':
-				return [{ label: 'Projects', url: '/projects' }];
-			case '/team':
-				return [{ label: 'Team', url: '/team' }];
-			default:
-				return [];
-		}
+		if (page.data.breadcrumbs) return page.data.breadcrumbs;
+		const seg = page.url.pathname.split('/').filter(Boolean)[0];
+		return seg ? [{ label: seg.charAt(0).toUpperCase() + seg.slice(1), url: '/' + seg }] : [];
 	});
 </script>
 

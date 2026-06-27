@@ -1,6 +1,6 @@
 <script lang="ts">
-	import LoginForm from "$lib/components/login-form.svelte";
-	import GalleryVerticalEndIcon from "@lucide/svelte/icons/gallery-vertical-end";
+	import LoginForm from '$lib/components/login-form.svelte';
+	import GalleryVerticalEndIcon from '@lucide/svelte/icons/gallery-vertical-end';
 
 	let { form } = $props();
 </script>

@@ -46,7 +46,7 @@ paths:
       tags: [documents]
       parameters:
         - $ref: "#/components/parameters/Limit"
-        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Offset"
         - name: issueId
           in: query
           required: false
@@ -141,6 +141,23 @@ paths:
         default:
           $ref: "#/components/responses/Error"
 
+  /documents/{documentId}/result:
+    parameters:
+      - $ref: "#/components/parameters/DocumentId"
+    get:
+      operationId: getDocumentResult
+      summary: Get the parsing job status and extracted output for a document
+      tags: [documents]
+      responses:
+        "200":
+          description: The parsing job status, and its output once complete.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentResult"
+        default:
+          $ref: "#/components/responses/Error"
+
   /documents/{documentId}/move:
     parameters:
       - $ref: "#/components/parameters/DocumentId"
@@ -164,6 +181,23 @@ paths:
         default:
           $ref: "#/components/responses/Error"
 
+  /documents/{documentId}/reprocess:
+    parameters:
+      - $ref: "#/components/parameters/DocumentId"
+    post:
+      operationId: reprocessDocument
+      summary: Re-queue the parsing job for a document
+      tags: [documents]
+      responses:
+        "200":
+          description: The re-queued parsing job status.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentResult"
+        default:
+          $ref: "#/components/responses/Error"
+
   /projects:
     get:
       operationId: listProjects
@@ -171,7 +205,7 @@ paths:
       tags: [projects]
       parameters:
         - $ref: "#/components/parameters/Limit"
-        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Offset"
       responses:
         "200":
           description: A page of projects.
@@ -257,7 +291,7 @@ paths:
       tags: [issues]
       parameters:
         - $ref: "#/components/parameters/Limit"
-        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Offset"
         - name: projectId
           in: query
           required: false
@@ -359,7 +393,7 @@ paths:
         - bearerAuth: [ADMIN]
       parameters:
         - $ref: "#/components/parameters/Limit"
-        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Offset"
         - name: role
           in: query
           required: false
@@ -453,7 +487,7 @@ paths:
       tags: [approvals]
       parameters:
         - $ref: "#/components/parameters/Limit"
-        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Offset"
         - name: documentId
           in: query
           required: false
@@ -573,7 +607,7 @@ paths:
       tags: [reviews]
       parameters:
         - $ref: "#/components/parameters/Limit"
-        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Offset"
       responses:
         "200":
           description: A page of comments.
@@ -624,12 +658,15 @@ components:
         minimum: 1
         maximum: 200
         default: 50
-    Cursor:
-      name: cursor
+    Offset:
+      name: offset
       in: query
       required: false
       schema:
-        type: string
+        type: integer
+        format: int32
+        minimum: 0
+        default: 0
     DocumentId:
       name: documentId
       in: path
@@ -698,6 +735,22 @@ components:
     DocumentStatus:
       type: string
       enum: [UPLOADED, IN_REVIEW, APPROVED, REJECTED, ARCHIVED]
+    ProcessingStatus:
+      type: string
+      enum: [QUEUED, PROCESSING, DONE, FAILED]
+    DocumentResult:
+      type: object
+      required: [status]
+      properties:
+        status: { $ref: "#/components/schemas/ProcessingStatus" }
+        error:
+          type: string
+          nullable: true
+          description: Failure reason, set when status is FAILED.
+        output:
+          type: string
+          nullable: true
+          description: Extracted markdown, present once status is DONE.
     IssueStatus:
       type: string
       enum: [OPEN, IN_PROGRESS, CLOSED]
@@ -756,14 +809,15 @@ components:
         updated_at: { type: string, format: date-time }
     DocumentPage:
       type: object
-      required: [items]
+      required: [items, total]
       properties:
         items:
           type: array
           items: { $ref: "#/components/schemas/Document" }
-        next_cursor:
-          type: string
-          nullable: true
+        total:
+          type: integer
+          format: int32
+          description: Total matching rows, ignoring limit/offset.
 
     Project:
       type: object
@@ -776,14 +830,15 @@ components:
         updated_at: { type: string, format: date-time }
     ProjectPage:
       type: object
-      required: [items]
+      required: [items, total]
       properties:
         items:
           type: array
           items: { $ref: "#/components/schemas/Project" }
-        next_cursor:
-          type: string
-          nullable: true
+        total:
+          type: integer
+          format: int32
+          description: Total matching rows, ignoring limit/offset.
     CreateProjectRequest:
       type: object
       required: [name]
@@ -812,14 +867,15 @@ components:
         updated_at: { type: string, format: date-time }
     IssuePage:
       type: object
-      required: [items]
+      required: [items, total]
       properties:
         items:
           type: array
           items: { $ref: "#/components/schemas/Issue" }
-        next_cursor:
-          type: string
-          nullable: true
+        total:
+          type: integer
+          format: int32
+          description: Total matching rows, ignoring limit/offset.
     CreateIssueRequest:
       type: object
       required: [project_id, title]
@@ -880,14 +936,15 @@ components:
         updated_at: { type: string, format: date-time }
     UserPage:
       type: object
-      required: [items]
+      required: [items, total]
       properties:
         items:
           type: array
           items: { $ref: "#/components/schemas/User" }
-        next_cursor:
-          type: string
-          nullable: true
+        total:
+          type: integer
+          format: int32
+          description: Total matching rows, ignoring limit/offset.
     CreateUserRequest:
       type: object
       required: [email, first_name, last_name, password]
@@ -981,14 +1038,15 @@ components:
           items: { $ref: "#/components/schemas/Decision" }
     ApprovalProcessPage:
       type: object
-      required: [items]
+      required: [items, total]
       properties:
         items:
           type: array
           items: { $ref: "#/components/schemas/ApprovalProcess" }
-        next_cursor:
-          type: string
-          nullable: true
+        total:
+          type: integer
+          format: int32
+          description: Total matching rows, ignoring limit/offset.
 
     SignatureInput:
       type: object
@@ -1073,11 +1131,12 @@ components:
         created_at: { type: string, format: date-time }
     ReviewCommentPage:
       type: object
-      required: [items]
+      required: [items, total]
       properties:
         items:
           type: array
           items: { $ref: "#/components/schemas/ReviewComment" }
-        next_cursor:
-          type: string
-          nullable: true
+        total:
+          type: integer
+          format: int32
+          description: Total matching rows, ignoring limit/offset.

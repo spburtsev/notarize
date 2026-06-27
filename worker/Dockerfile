@@ -12,7 +12,8 @@ ENV PYTHONUNBUFFERED=1 \
     PATH=/app/.venv/bin:$PATH
 
 COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen --no-dev
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev
 
 COPY worker.py ./
 

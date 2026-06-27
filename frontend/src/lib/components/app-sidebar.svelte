@@ -1,42 +1,42 @@
 <script lang="ts">
-	import ChartBarIcon from "@tabler/icons-svelte/icons/chart-bar";
-	import DashboardIcon from "@tabler/icons-svelte/icons/dashboard";
-	import FolderIcon from "@tabler/icons-svelte/icons/folder";
-	import InnerShadowTopIcon from "@tabler/icons-svelte/icons/inner-shadow-top";
-	import UsersIcon from "@tabler/icons-svelte/icons/users";
-	import NavMain from "./nav-main.svelte";
-	import NavUser from "./nav-user.svelte";
-	import * as Sidebar from "$lib/components/ui/sidebar/index.js";
-	import type { ComponentProps } from "svelte";
+	import ChartBarIcon from '@tabler/icons-svelte/icons/chart-bar';
+	import DashboardIcon from '@tabler/icons-svelte/icons/dashboard';
+	import FolderIcon from '@tabler/icons-svelte/icons/folder';
+	import InnerShadowTopIcon from '@tabler/icons-svelte/icons/inner-shadow-top';
+	import UsersIcon from '@tabler/icons-svelte/icons/users';
+	import NavMain from './nav-main.svelte';
+	import NavUser from './nav-user.svelte';
+	import * as Sidebar from '$lib/components/ui/sidebar/index.js';
+	import type { ComponentProps } from 'svelte';
 
 	const data = {
 		user: {
-			name: "shadcn",
-			email: "m@example.com",
-			avatar: "/avatars/shadcn.jpg",
+			name: 'shadcn',
+			email: 'm@example.com',
+			avatar: '/avatars/shadcn.jpg'
 		},
 		navMain: [
 			{
-				title: "Dashboard",
-				url: "/dashboard",
-				icon: DashboardIcon,
+				title: 'Dashboard',
+				url: '/dashboard',
+				icon: DashboardIcon
 			},
 			{
-				title: "Analytics",
-				url: "/analytics",
-				icon: ChartBarIcon,
+				title: 'Analytics',
+				url: '/analytics',
+				icon: ChartBarIcon
 			},
 			{
-				title: "Projects",
-				url: "/projects",
-				icon: FolderIcon,
+				title: 'Projects',
+				url: '/projects',
+				icon: FolderIcon
 			},
 			{
-				title: "Team",
-				url: "/team",
-				icon: UsersIcon,
-			},
-		],
+				title: 'Users',
+				url: '/users',
+				icon: UsersIcon
+			}
+		]
 	};
 
 	let { ...restProps }: ComponentProps<typeof Sidebar.Root> = $props();

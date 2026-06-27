@@ -14,26 +14,25 @@
 	<div class="flex w-full items-center gap-1 px-4 lg:gap-2 lg:px-6">
 		<Sidebar.Trigger class="-ms-1" />
 		<Separator orientation="vertical" class="mx-2 data-[orientation=vertical]:h-4" />
-		<div class="flex flex-col gap-0.5">
-			{#if breadcrumbs.length > 1}
-				<Breadcrumb.Root>
-					<Breadcrumb.List>
-						{#each breadcrumbs as crumb, i (crumb.label)}
-							<Breadcrumb.Item>
-								{#if i < breadcrumbs.length - 1}
-									<Breadcrumb.Link href={crumb.url}>{crumb.label}</Breadcrumb.Link>
-								{:else}
-									<Breadcrumb.Page>{crumb.label}</Breadcrumb.Page>
-								{/if}
-							</Breadcrumb.Item>
+		{#if breadcrumbs.length > 1}
+			<Breadcrumb.Root>
+				<Breadcrumb.List>
+					{#each breadcrumbs as crumb, i (crumb.label)}
+						<Breadcrumb.Item>
 							{#if i < breadcrumbs.length - 1}
-								<Breadcrumb.Separator />
+								<Breadcrumb.Link href={crumb.url}>{crumb.label}</Breadcrumb.Link>
+							{:else}
+								<Breadcrumb.Page>{crumb.label}</Breadcrumb.Page>
 							{/if}
-						{/each}
-					</Breadcrumb.List>
-				</Breadcrumb.Root>
-			{/if}
+						</Breadcrumb.Item>
+						{#if i < breadcrumbs.length - 1}
+							<Breadcrumb.Separator />
+						{/if}
+					{/each}
+				</Breadcrumb.List>
+			</Breadcrumb.Root>
+		{:else}
 			<h1 class="text-base font-medium">{pageTitle}</h1>
-		</div>
+		{/if}
 	</div>
 </header>
