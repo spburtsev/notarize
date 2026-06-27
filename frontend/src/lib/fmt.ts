@@ -1,8 +1,8 @@
 export function humanizeEnum(value: string): string {
-  return value
-    .split('_')
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-    .join(' ');
+	return value
+		.split('_')
+		.map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+		.join(' ');
 }
 
 export function kb(bytes: number) {
