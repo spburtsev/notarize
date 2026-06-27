@@ -2,8 +2,7 @@ import { fail, redirect } from '@sveltejs/kit';
 import { login } from '$lib/api';
 import { serverApi } from '$lib/server/api';
 import type { Actions } from './$types';
-
-const SESSION_MAX_AGE = 60 * 60 * 24;
+import { setSession } from '$lib/server/session';
 
 export const actions: Actions = {
 	default: async (event) => {
@@ -37,13 +36,7 @@ export const actions: Actions = {
 			return fail(502, { email, error: 'Could not reach the authentication server.' });
 		}
 
-		cookies.set('session', result.token, {
-			httpOnly: true,
-			sameSite: 'lax',
-			path: '/',
-			maxAge: SESSION_MAX_AGE
-		});
-
+		setSession(cookies, result.token, result.user);
 		redirect(303, '/dashboard');
 	}
 };

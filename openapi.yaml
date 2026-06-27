@@ -122,6 +122,18 @@ paths:
                 $ref: "#/components/schemas/Document"
         default:
           $ref: "#/components/responses/Error"
+    delete:
+      operationId: deleteDocument
+      summary: Delete a document
+      description: >
+        Removes the document, its stored bytes and derived output, its parsing
+        job, and any approval processes bound to it.
+      tags: [documents]
+      responses:
+        "204":
+          description: Document deleted.
+        default:
+          $ref: "#/components/responses/Error"
 
   /documents/{documentId}/content:
     parameters:
@@ -356,6 +368,8 @@ paths:
         Partial update. Omit a field to leave it unchanged. Setting `project_id`
         moves the issue to another project.
       tags: [issues]
+      security:
+        - bearerAuth: [ADMIN, MANAGER]
       requestBody:
         required: true
         content:

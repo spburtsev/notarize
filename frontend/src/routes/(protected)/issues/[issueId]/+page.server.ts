@@ -1,5 +1,5 @@
 import { fail } from '@sveltejs/kit';
-import { getIssue, getProject, listDocuments, createDocument } from '$lib/api';
+import { getIssue, getProject, listDocuments, createDocument, updateIssue } from '$lib/api';
 import { serverApi } from '$lib/server/api';
 import type { Actions, PageServerLoad } from './$types';
 import { propagateErr } from '$lib/server/api';
@@ -39,6 +39,22 @@ export const actions: Actions = {
 		if (error) {
 			if (response?.status === 400) return fail(400, { error: 'Only PDF documents are accepted.' });
 			return fail(502, { error: 'Upload failed.' });
+		}
+		return { success: true };
+	},
+	update: async (event) => {
+		const fd = await event.request.formData();
+		const description = String(fd.get('description') ?? '');
+		const { error, response } = await updateIssue({
+			client: serverApi(event),
+			path: { issueId: event.params.issueId },
+			body: { description: description || null }
+		});
+		if (error) {
+			if (response?.status === 403) {
+				return fail(403, { error: 'Only managers and admins can edit issues.' });
+            }
+			return fail(502, { error: `Could not update issue: ${error.message}.` });
 		}
 		return { success: true };
 	}

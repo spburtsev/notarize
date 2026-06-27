@@ -4,7 +4,7 @@
 	import SiteHeader from '$lib/components/site-header.svelte';
 	import { page } from '$app/state';
 
-	const { children } = $props();
+	const { children, data } = $props();
 	const breadcrumbs = $derived.by(() => {
 		if (page.data.breadcrumbs) return page.data.breadcrumbs;
 		const seg = page.url.pathname.split('/').filter(Boolean)[0];
@@ -15,7 +15,7 @@
 <Sidebar.Provider
 	style="--sidebar-width: calc(var(--spacing) * 72); --header-height: calc(var(--spacing) * 12);"
 >
-	<AppSidebar variant="inset" />
+	<AppSidebar variant="floating" collapsible="icon" user={data.user} />
 	<Sidebar.Inset>
 		<SiteHeader {breadcrumbs} />
 		<div class="flex flex-1 flex-col">

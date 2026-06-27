@@ -16,7 +16,11 @@ export const load: PageServerLoad = async (event) => {
 		issues: issues?.items ?? [],
 		total: issues?.total ?? 0,
 		offset,
-		limit: PAGE_SIZE
+		limit: PAGE_SIZE,
+		breadcrumbs: [
+			{ label: 'Projects', url: '/projects' },
+			{ label: project?.name ?? 'Project', url: `/projects/${event.params.projectId}` }
+		]
 	};
 };
 

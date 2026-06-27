@@ -8,41 +8,24 @@
 	import NavUser from './nav-user.svelte';
 	import * as Sidebar from '$lib/components/ui/sidebar/index.js';
 	import type { ComponentProps } from 'svelte';
+	import type { User } from '$lib/api';
 
-	const data = {
-		user: {
-			name: 'shadcn',
-			email: 'm@example.com',
-			avatar: '/avatars/shadcn.jpg'
-		},
-		navMain: [
-			{
-				title: 'Dashboard',
-				url: '/dashboard',
-				icon: DashboardIcon
-			},
-			{
-				title: 'Analytics',
-				url: '/analytics',
-				icon: ChartBarIcon
-			},
-			{
-				title: 'Projects',
-				url: '/projects',
-				icon: FolderIcon
-			},
-			{
-				title: 'Users',
-				url: '/users',
-				icon: UsersIcon
-			}
-		]
-	};
+	let { user, ...restProps }: { user?: User | null } & ComponentProps<typeof Sidebar.Root> =
+		$props();
 
-	let { ...restProps }: ComponentProps<typeof Sidebar.Root> = $props();
+	const baseNav = [
+		{ title: 'Dashboard', url: '/dashboard', icon: DashboardIcon },
+		{ title: 'Analytics', url: '/analytics', icon: ChartBarIcon },
+		{ title: 'Projects', url: '/projects', icon: FolderIcon },
+		{ title: 'Users', url: '/users', icon: UsersIcon }
+	];
+	// Users management is admin-only.
+	const navMain = $derived(
+		user?.role === 'ADMIN' ? baseNav : baseNav.filter((item) => item.url !== '/users')
+	);
 </script>
 
-<Sidebar.Root collapsible="offcanvas" {...restProps}>
+<Sidebar.Root collapsible="icon" {...restProps}>
 	<Sidebar.Header>
 		<Sidebar.Menu>
 			<Sidebar.MenuItem>
@@ -58,9 +41,9 @@
 		</Sidebar.Menu>
 	</Sidebar.Header>
 	<Sidebar.Content>
-		<NavMain items={data.navMain} />
+		<NavMain items={navMain} />
 	</Sidebar.Content>
 	<Sidebar.Footer>
-		<NavUser user={data.user} />
+		<NavUser {user} />
 	</Sidebar.Footer>
 </Sidebar.Root>

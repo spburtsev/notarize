@@ -51,6 +51,13 @@ func (s *Storage) Get(ctx context.Context, key string) (io.ReadCloser, error) {
 	return obj, nil
 }
 
+func (s *Storage) Delete(ctx context.Context, key string) error {
+	if err := s.client.RemoveObject(ctx, s.bucket, key, minio.RemoveObjectOptions{}); err != nil {
+		return fmt.Errorf("remove object %q: %w", key, err)
+	}
+	return nil
+}
+
 func (s *Storage) EnsureBucket(ctx context.Context) error {
 	const maxAttempts = 10
 	const retryDelay = time.Second

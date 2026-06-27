@@ -8,6 +8,7 @@
 	import * as Select from '$lib/components/ui/select/index.js';
 	import Pagination from '$lib/components/pagination.svelte';
 	import { enhance } from '$app/forms';
+	import { humanizeEnum } from '$lib/fmt.js';
 
 	let { data, form } = $props();
 
@@ -42,10 +43,10 @@
 					<Field>
 						<FieldLabel for="role">Role</FieldLabel>
 						<Select.Root type="single" name="role" bind:value={role}>
-							<Select.Trigger id="role" class="w-full">{role}</Select.Trigger>
+							<Select.Trigger id="role" class="w-full">{humanizeEnum(role)}</Select.Trigger>
 							<Select.Content>
 								{#each roles as r (r)}
-									<Select.Item value={r} label={r} />
+									<Select.Item value={r} label={humanizeEnum(r)} />
 								{/each}
 							</Select.Content>
 						</Select.Root>
@@ -73,7 +74,7 @@
 						<Table.Row>
 							<Table.Cell class="font-medium">{u.email}</Table.Cell>
 							<Table.Cell>{u.first_name} {u.last_name}</Table.Cell>
-							<Table.Cell><Badge variant="secondary">{u.role}</Badge></Table.Cell>
+							<Table.Cell><Badge variant="secondary">{humanizeEnum(u.role)}</Badge></Table.Cell>
 						</Table.Row>
 					{:else}
 						<Table.Row>

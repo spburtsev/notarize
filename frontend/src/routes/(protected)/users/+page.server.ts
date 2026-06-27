@@ -1,4 +1,4 @@
-import { fail } from '@sveltejs/kit';
+import { fail, redirect } from '@sveltejs/kit';
 import { listUsers, createUser } from '$lib/api';
 import type { UserRole } from '$lib/api';
 import { serverApi } from '$lib/server/api';
@@ -6,6 +6,9 @@ import { PAGE_SIZE, parseOffset } from '$lib/pagination';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async (event) => {
+	const { user } = await event.parent();
+	if (user?.role !== 'ADMIN') redirect(303, '/');
+
 	const offset = parseOffset(event.url);
 	const { data } = await listUsers({
 		client: serverApi(event),

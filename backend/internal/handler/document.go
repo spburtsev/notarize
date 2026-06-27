@@ -145,6 +145,20 @@ func (h *ServerHandler) ReprocessDocument(ctx context.Context, params oas.Reproc
 	return &oas.DocumentResult{Status: oas.ProcessingStatusQUEUED}, nil
 }
 
+func (h *ServerHandler) DeleteDocument(ctx context.Context, params oas.DeleteDocumentParams) error {
+	var doc models.Document
+	if err := h.db.WithContext(ctx).First(&doc, "id = ?", params.DocumentId).Error; err != nil {
+		return notFound(err)
+	}
+	if err := h.db.WithContext(ctx).Delete(&doc).Error; err != nil {
+		return err
+	}
+	// TODO: handle storage errors
+	_ = h.storage.Delete(ctx, doc.StorageKey)
+	_ = h.storage.Delete(ctx, "derived/"+doc.ID.String()+".md")
+	return nil
+}
+
 func toOASDocument(d models.Document) oas.Document {
 	return oas.Document{
 		ID:          d.ID,

@@ -7,8 +7,27 @@
 	import * as Avatar from '$lib/components/ui/avatar/index.js';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
 	import * as Sidebar from '$lib/components/ui/sidebar/index.js';
+	import { goto } from '$app/navigation';
 
-	let { user }: { user: { name: string; email: string; avatar: string } } = $props();
+	import type { User } from '$lib/api';
+
+	let { user }: { user?: User | null } = $props();
+
+	async function logout() {
+		await fetch('/logout', { method: 'POST' });
+		await goto('/login', { invalidateAll: true });
+	}
+
+	const name = $derived(
+		user ? `${user.first_name} ${user.last_name}`.trim() || user.email : 'Account'
+	);
+	const email = $derived(user?.email ?? '');
+	const initials = $derived(
+		(user
+			? `${user.first_name?.[0] ?? ''}${user.last_name?.[0] ?? ''}` || user.email[0] || '?'
+			: '?'
+		).toUpperCase()
+	);
 
 	const sidebar = Sidebar.useSidebar();
 </script>
@@ -24,13 +43,12 @@
 						class="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
 					>
 						<Avatar.Root class="size-8 rounded-lg grayscale">
-							<Avatar.Image src={user.avatar} alt={user.name} />
-							<Avatar.Fallback class="rounded-lg">CN</Avatar.Fallback>
+							<Avatar.Fallback class="rounded-lg">{initials}</Avatar.Fallback>
 						</Avatar.Root>
 						<div class="grid flex-1 text-start text-sm leading-tight">
-							<span class="truncate font-medium">{user.name}</span>
+							<span class="truncate font-medium">{name}</span>
 							<span class="text-muted-foreground truncate text-xs">
-								{user.email}
+								{email}
 							</span>
 						</div>
 						<DotsVerticalIcon class="ms-auto size-4" />
@@ -46,13 +64,12 @@
 				<DropdownMenu.Label class="p-0 font-normal">
 					<div class="flex items-center gap-2 px-1 py-1.5 text-start text-sm">
 						<Avatar.Root class="size-8 rounded-lg">
-							<Avatar.Image src={user.avatar} alt={user.name} />
-							<Avatar.Fallback class="rounded-lg">CN</Avatar.Fallback>
+							<Avatar.Fallback class="rounded-lg">{initials}</Avatar.Fallback>
 						</Avatar.Root>
 						<div class="grid flex-1 text-start text-sm leading-tight">
-							<span class="truncate font-medium">{user.name}</span>
+							<span class="truncate font-medium">{name}</span>
 							<span class="text-muted-foreground truncate text-xs">
-								{user.email}
+								{email}
 							</span>
 						</div>
 					</div>
@@ -73,7 +90,7 @@
 					</DropdownMenu.Item>
 				</DropdownMenu.Group>
 				<DropdownMenu.Separator />
-				<DropdownMenu.Item>
+				<DropdownMenu.Item onclick={logout}>
 					<LogoutIcon />
 					Log out
 				</DropdownMenu.Item>

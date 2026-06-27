@@ -1,9 +1,10 @@
 import { type RequestEvent, error } from '@sveltejs/kit';
 import { BACKEND_URL } from '$app/env/private';
 import { createClient, createConfig } from '$lib/api/client';
+import { getSessionToken } from './session';
 
 export function serverApi(event: Pick<RequestEvent, 'fetch' | 'cookies'>) {
-	const session = event.cookies.get('session');
+	const session = getSessionToken(event.cookies);
 	return createClient(
 		createConfig({
 			baseUrl: BACKEND_URL,

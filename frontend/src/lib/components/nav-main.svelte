@@ -1,12 +1,12 @@
 <script lang="ts">
 	import CirclePlusFilledIcon from '@tabler/icons-svelte/icons/circle-plus-filled';
-	import MailIcon from '@tabler/icons-svelte/icons/mail';
 	import { page } from '$app/state';
-	import { Button } from '$lib/components/ui/button/index.js';
 	import * as Sidebar from '$lib/components/ui/sidebar/index.js';
 	import type { Icon } from '@tabler/icons-svelte';
+	import QuickCreate from '$lib/components/quick-create.svelte';
 
 	let { items }: { items: { title: string; url: string; icon?: Icon }[] } = $props();
+	let quickCreateOpen = $state(false);
 </script>
 
 <Sidebar.Group>
@@ -16,18 +16,11 @@
 				<Sidebar.MenuButton
 					class="bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground min-w-8 duration-200 ease-linear"
 					tooltipContent="Quick create"
+					onclick={() => (quickCreateOpen = true)}
 				>
 					<CirclePlusFilledIcon />
 					<span>Quick Create</span>
 				</Sidebar.MenuButton>
-				<Button
-					size="icon"
-					class="size-8 group-data-[collapsible=icon]:opacity-0"
-					variant="outline"
-				>
-					<MailIcon />
-					<span class="sr-only">Inbox</span>
-				</Button>
 			</Sidebar.MenuItem>
 		</Sidebar.Menu>
 		<Sidebar.Menu>
@@ -52,3 +45,5 @@
 		</Sidebar.Menu>
 	</Sidebar.GroupContent>
 </Sidebar.Group>
+
+<QuickCreate bind:open={quickCreateOpen} />

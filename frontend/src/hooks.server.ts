@@ -1,6 +1,7 @@
 import { sequence } from '@sveltejs/kit/hooks';
 import { error, redirect, type Handle } from '@sveltejs/kit';
 import { BACKEND_URL } from '$app/env/private';
+import { getSessionToken } from '$lib/server/session';
 
 const PROXY_PATH = '/api-proxy';
 
@@ -11,11 +12,12 @@ const handleApiProxy: Handle = async ({ event, resolve }) => {
 
 	const backendURL = BACKEND_URL;
 
-	const origin = event.request.headers.get('Origin');
-
-	// reject requests that don't come from the webapp, to avoid your proxy being abused.
-	if (!origin || new URL(origin).origin !== event.url.origin) {
-		error(403, 'Request Forbidden.');
+	const method = event.request.method;
+	if (method !== 'GET' && method !== 'HEAD') {
+		const origin = event.request.headers.get('Origin');
+		if (!origin || new URL(origin).origin !== event.url.origin) {
+			error(403, 'Request Forbidden.');
+		}
 	}
 
 	// strip `/api-proxy` from the request path
@@ -26,7 +28,7 @@ const handleApiProxy: Handle = async ({ event, resolve }) => {
 	const proxiedUrl = new URL(urlPath);
 
 	const headers = new Headers(event.request.headers);
-	const session = event.cookies.get('session');
+	const session = getSessionToken(event.cookies);
 	if (session) {
 		headers.set('Authorization', `Bearer ${session}`);
 	}
@@ -47,7 +49,7 @@ const handleApiProxy: Handle = async ({ event, resolve }) => {
 };
 
 const handleAuth: Handle = async ({ event, resolve }) => {
-	if (event.route.id?.startsWith('/(protected)') && !event.cookies.get('session')) {
+	if (event.route.id?.startsWith('/(protected)') && !getSessionToken(event.cookies)) {
 		redirect(303, '/login');
 	}
 
